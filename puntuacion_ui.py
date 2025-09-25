@@ -1,5 +1,5 @@
 # puntuacion_ui.py
-# Versión con estilo profesional de degradados celestes
+# CORREGIDO: Actualizados los bucles para manejar la nueva estructura de datos con logo_path.
 
 import sys
 from PySide6.QtWidgets import (
@@ -25,7 +25,6 @@ class PuntuacionTabWidget(QWidget):
         layout_principal.setContentsMargins(10, 10, 10, 10)
         layout_principal.setSpacing(15)
 
-        # Panel Superior de Control
         panel_control = QGroupBox("Control del Evento y Puntuación")
         panel_control.setStyleSheet("""
             QGroupBox {
@@ -70,7 +69,6 @@ class PuntuacionTabWidget(QWidget):
         
         layout_principal.addWidget(panel_control)
 
-        # Splitter para dividir la vista
         splitter = QSplitter(Qt.Horizontal)
         splitter.setStyleSheet("""
             QSplitter::handle {
@@ -80,44 +78,27 @@ class PuntuacionTabWidget(QWidget):
             }
         """)
 
-        # --- Panel Izquierdo: Configuración de Puntuación y Ranking por Puntos ---
         panel_izquierdo = QWidget()
         layout_izquierdo = QVBoxLayout(panel_izquierdo)
         layout_izquierdo.setContentsMargins(5, 5, 5, 5)
         layout_izquierdo.setSpacing(10)
 
         group_config = QGroupBox("Sistema de Puntuación")
-        group_config.setStyleSheet("""
-            QGroupBox {
-                font-weight: bold;
-                color: #2a5c7a;
-            }
-        """)
+        group_config.setStyleSheet("QGroupBox { font-weight: bold; color: #2a5c7a; }")
         form_puntuacion = QFormLayout(group_config)
-        form_puntuacion.setVerticalSpacing(8)
-        form_puntuacion.setHorizontalSpacing(15)
+        form_puntuacion.setVerticalSpacing(8); form_puntuacion.setHorizontalSpacing(15)
         
         for i in range(1, 11):
             spinner = QSpinBox()
             spinner.setRange(0, 100)
             puntajes_defecto = {1: 10, 2: 8, 3: 6, 4: 5, 5: 4, 6: 3, 7: 2, 8: 1}
             spinner.setValue(puntajes_defecto.get(i, 0))
-            spinner.setStyleSheet("""
-                QSpinBox {
-                    min-width: 60px;
-                    max-width: 80px;
-                }
-            """)
+            spinner.setStyleSheet("QSpinBox { min-width: 60px; max-width: 80px; }")
             self.spinboxes_puntuacion[i] = spinner
             form_puntuacion.addRow(f"{i}º Lugar:", spinner)
 
         group_tabla_puntos = QGroupBox("Ranking por Puntos")
-        group_tabla_puntos.setStyleSheet("""
-            QGroupBox {
-                font-weight: bold;
-                color: #2a5c7a;
-            }
-        """)
+        group_tabla_puntos.setStyleSheet("QGroupBox { font-weight: bold; color: #2a5c7a; }")
         layout_tabla_puntos = QVBoxLayout(group_tabla_puntos)
         self.tabla_puntuacion = QTableWidget()
         self.tabla_puntuacion.setColumnCount(3)
@@ -129,19 +110,13 @@ class PuntuacionTabWidget(QWidget):
         layout_izquierdo.addWidget(group_config)
         layout_izquierdo.addWidget(group_tabla_puntos)
         
-        # --- Panel Derecho: Ranking por Medallas ---
         panel_derecho = QWidget()
         layout_derecho = QVBoxLayout(panel_derecho)
         layout_derecho.setContentsMargins(5, 5, 5, 5)
         layout_derecho.setSpacing(10)
         
         group_tabla_medallas = QGroupBox("Ranking por Medallas (Medallero)")
-        group_tabla_medallas.setStyleSheet("""
-            QGroupBox {
-                font-weight: bold;
-                color: #2a5c7a;
-            }
-        """)
+        group_tabla_medallas.setStyleSheet("QGroupBox { font-weight: bold; color: #2a5c7a; }")
         layout_tabla_medallas = QVBoxLayout(group_tabla_medallas)
         self.tabla_medallas = QTableWidget()
         self.tabla_medallas.setColumnCount(5)
@@ -158,7 +133,6 @@ class PuntuacionTabWidget(QWidget):
 
         layout_principal.addWidget(splitter)
 
-        # Conexiones
         self.btn_calcular.clicked.connect(self.calcular_y_mostrar_todo)
 
         print("[INFO] Pestaña Puntuación inicializada.")
@@ -190,7 +164,9 @@ class PuntuacionTabWidget(QWidget):
         resultados_clubes = db.calcular_puntuacion_clubes(self.id_evento_activo, sistema_puntuacion)
         
         self.tabla_puntuacion.setRowCount(0)
-        for row_idx, (nombre_club, puntuacion) in enumerate(resultados_clubes):
+        # --- CORRECCIÓN AQUÍ ---
+        # Ahora desempaquetamos 3 valores: nombre, logo y puntuación.
+        for row_idx, (nombre_club, logo_path, puntuacion) in enumerate(resultados_clubes):
             self.tabla_puntuacion.insertRow(row_idx)
             self.tabla_puntuacion.setItem(row_idx, 0, QTableWidgetItem(str(row_idx + 1)))
             self.tabla_puntuacion.setItem(row_idx, 1, QTableWidgetItem(nombre_club))
@@ -200,7 +176,9 @@ class PuntuacionTabWidget(QWidget):
         medallero = db.calcular_ranking_medallas(self.id_evento_activo)
         
         self.tabla_medallas.setRowCount(0)
-        for row_idx, (nombre_club, oro, plata, bronce) in enumerate(medallero):
+        # --- CORRECCIÓN AQUÍ ---
+        # Ahora desempaquetamos 5 valores: nombre, logo, oro, plata y bronce.
+        for row_idx, (nombre_club, logo_path, oro, plata, bronce) in enumerate(medallero):
             self.tabla_medallas.insertRow(row_idx)
             self.tabla_medallas.setItem(row_idx, 0, QTableWidgetItem(str(row_idx + 1)))
             self.tabla_medallas.setItem(row_idx, 1, QTableWidgetItem(nombre_club))

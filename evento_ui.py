@@ -1,19 +1,18 @@
 # evento_ui.py
 # Pestaña para la gestión del Evento principal de la regata.
-# CORREGIDO: Se añadieron QFormLayout y QInputDialog a las importaciones.
+# CORREGIDO: Conexión a la base de datos actualizada.
 
 import sys
 import sqlite3
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit, QPushButton,
     QMessageBox, QListWidget, QListWidgetItem, QGroupBox, QDateEdit,
-    QTextEdit, QAbstractItemView, QFileDialog, QInputDialog, QFormLayout # <--- CORRECCIÓN AQUÍ
+    QTextEdit, QAbstractItemView, QFileDialog, QInputDialog, QFormLayout
 )
 from PySide6.QtCore import QDate, Qt, Signal
 import database_maraton as db
 
 class EventoTabWidget(QWidget):
-    # Señal que se emitirá cuando un evento sea seleccionado como activo
     evento_activo_cambiado = Signal(int, str)
 
     def __init__(self):
@@ -27,7 +26,6 @@ class EventoTabWidget(QWidget):
     def init_ui(self):
         layout_principal = QHBoxLayout(self)
         
-        # Panel Izquierdo: Formulario y Lista de Eventos
         panel_izquierdo = QWidget()
         layout_izquierdo = QVBoxLayout(panel_izquierdo)
         
@@ -35,7 +33,7 @@ class EventoTabWidget(QWidget):
         form_layout = QFormLayout(group_form)
         self.nombre_evento_input = QLineEdit()
         self.fecha_evento_edit = QDateEdit(calendarPopup=True)
-        self.fecha_evento_edit.setDisplayFormat("dd-MM-yyyy")
+        self.fecha_evento_edit.setDisplayFormat("yyyy-MM-dd") # Formato estándar para DB
         self.lugar_evento_input = QLineEdit()
         self.notas_evento_input = QTextEdit()
         self.notas_evento_input.setFixedHeight(60)
@@ -62,21 +60,17 @@ class EventoTabWidget(QWidget):
         layout_izquierdo.addLayout(botones_layout)
         layout_izquierdo.addWidget(group_lista)
 
-        # Panel Derecho: Estado y Patrocinadores
         panel_derecho = QWidget()
         layout_derecho = QVBoxLayout(panel_derecho)
         
         group_activo = QGroupBox("Estado del Evento")
         layout_activo = QVBoxLayout(group_activo)
         self.label_evento_activo_titulo = QLabel("EVENTO ACTIVO:")
-        font_titulo = self.label_evento_activo_titulo.font()
-        font_titulo.setPointSize(12)
+        font_titulo = self.label_evento_activo_titulo.font(); font_titulo.setPointSize(12)
         self.label_evento_activo_titulo.setFont(font_titulo)
         
         self.label_evento_activo_nombre = QLabel(f"<b>{self.nombre_evento_activo}</b>")
-        font_nombre = self.label_evento_activo_nombre.font()
-        font_nombre.setPointSize(16)
-        font_nombre.setBold(True)
+        font_nombre = self.label_evento_activo_nombre.font(); font_nombre.setPointSize(16); font_nombre.setBold(True)
         self.label_evento_activo_nombre.setFont(font_nombre)
         self.label_evento_activo_nombre.setStyleSheet("color: #005A9E;")
         self.label_evento_activo_nombre.setWordWrap(True)
@@ -89,7 +83,6 @@ class EventoTabWidget(QWidget):
         layout_activo.addStretch()
         layout_activo.addWidget(self.btn_seleccionar_activo)
         
-        # --- NUEVA SECCIÓN DE PATROCINADORES ---
         group_sponsors = QGroupBox("Patrocinadores del Evento Seleccionado")
         layout_sponsors = QVBoxLayout(group_sponsors)
         self.lista_sponsors_widget = QListWidget()
@@ -107,7 +100,6 @@ class EventoTabWidget(QWidget):
         layout_principal.addWidget(panel_izquierdo, 1)
         layout_principal.addWidget(panel_derecho, 1)
 
-        # Conexiones
         self.btn_nuevo.clicked.connect(self.limpiar_formulario)
         self.btn_guardar.clicked.connect(self.guardar_evento)
         self.btn_eliminar.clicked.connect(self.eliminar_evento)
@@ -117,7 +109,6 @@ class EventoTabWidget(QWidget):
         self.btn_quitar_sponsor.clicked.connect(self.quitar_sponsor)
         
         self.limpiar_formulario()
-        print("[INFO] Pestaña Evento inicializada.")
 
     def limpiar_formulario(self):
         self.id_evento_seleccionado = None
@@ -143,14 +134,12 @@ class EventoTabWidget(QWidget):
         if not nombre:
             QMessageBox.warning(self, "Campo Requerido", "El nombre del evento es obligatorio.")
             return
-        
         datos = {
             'nombre_evento': nombre,
             'fecha': self.fecha_evento_edit.date().toString("yyyy-MM-dd"),
             'lugar': self.lugar_evento_input.text().strip(),
             'notas': self.notas_evento_input.toPlainText().strip()
         }
-        
         evento_id, mensaje = db.agregar_o_actualizar_evento(datos, self.id_evento_seleccionado)
         if evento_id:
             QMessageBox.information(self, "Éxito", mensaje)
@@ -163,10 +152,9 @@ class EventoTabWidget(QWidget):
         if not self.id_evento_seleccionado:
             QMessageBox.warning(self, "Sin Selección", "Selecciona un evento de la lista para eliminar.")
             return
-        
         nombre_macro_seleccionado = self.nombre_evento_input.text()
-        confirmacion = QMessageBox.question(self, "Confirmar Eliminación", f"¿Estás seguro de que quieres eliminar el evento '{nombre_macro_seleccionado}'?\n¡Esto también eliminará todas sus inscripciones y patrocinadores asociados!\n¡Esta acción no se puede deshacer!", QMessageBox.Yes | QMessageBox.No, QMessageBox.No)
-        if confirmacion == QMessageBox.Yes:
+        confirmacion = QMessageBox.question(self, "Confirmar Eliminación", f"¿Estás seguro de que quieres eliminar el evento '{nombre_macro_seleccionado}'?\n¡Esto también eliminará todas sus inscripciones y patrocinadores asociados!\n¡Esta acción no se puede deshacer!", QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No, QMessageBox.StandardButton.No)
+        if confirmacion == QMessageBox.StandardButton.Yes:
             exito, mensaje = db.eliminar_evento(self.id_evento_seleccionado)
             if exito:
                 QMessageBox.information(self, "Eliminado", f"Evento '{nombre_macro_seleccionado}' eliminado correctamente.")
@@ -177,35 +165,29 @@ class EventoTabWidget(QWidget):
 
     def cargar_evento_seleccionado(self, item):
         self.id_evento_seleccionado = item.data(Qt.UserRole)
-        conn = db.conectar_db()
-        if not conn: return
         try:
-            cursor = conn.cursor()
-            cursor.execute("SELECT nombre_evento, fecha, lugar, notas FROM eventos WHERE id=?", (self.id_evento_seleccionado,))
-            data = cursor.fetchone()
-            if data:
-                self.nombre_evento_input.setText(data[0])
-                self.fecha_evento_edit.setDate(QDate.fromString(data[1], "yyyy-MM-dd"))
-                self.lugar_evento_input.setText(data[2])
-                self.notas_evento_input.setPlainText(data[3])
-                self.btn_seleccionar_activo.setEnabled(True)
-                self.cargar_sponsors_del_evento()
+            with db.conectar_db() as conn:
+                cursor = conn.cursor()
+                cursor.execute("SELECT nombre_evento, fecha, lugar, notas FROM eventos WHERE id=?", (self.id_evento_seleccionado,))
+                data = cursor.fetchone()
+                if data:
+                    self.nombre_evento_input.setText(data[0])
+                    self.fecha_evento_edit.setDate(QDate.fromString(data[1], "yyyy-MM-dd"))
+                    self.lugar_evento_input.setText(data[2])
+                    self.notas_evento_input.setPlainText(data[3])
+                    self.btn_seleccionar_activo.setEnabled(True)
+                    self.cargar_sponsors_del_evento()
         except sqlite3.Error as e:
             QMessageBox.critical(self, "Error", f"No se pudo cargar el evento: {e}")
-        finally:
-            conn.close()
 
     def seleccionar_evento_activo(self):
         if not self.id_evento_seleccionado:
             QMessageBox.warning(self, "Sin Selección", "Selecciona un evento de la lista primero.")
             return
-        
         self.id_evento_activo = self.id_evento_seleccionado
         self.nombre_evento_activo = self.nombre_evento_input.text()
         self.label_evento_activo_nombre.setText(f"<b>{self.nombre_evento_activo}</b>")
-        
         self.evento_activo_cambiado.emit(self.id_evento_activo, self.nombre_evento_activo)
-        
         QMessageBox.information(self, "Evento Activo", f"'{self.nombre_evento_activo}' ha sido seleccionado como el evento activo.")
 
     def cargar_sponsors_del_evento(self):
@@ -221,11 +203,9 @@ class EventoTabWidget(QWidget):
         if not self.id_evento_seleccionado:
             QMessageBox.warning(self, "Sin Evento", "Primero selecciona un evento para añadirle un patrocinador.")
             return
-
         logo_path, _ = QFileDialog.getOpenFileName(self, "Seleccionar Logo del Patrocinador", "", "Imágenes (*.png *.jpg *.jpeg)")
         if not logo_path:
             return
-
         nombre_sponsor, ok = QInputDialog.getText(self, "Nombre del Patrocinador", "Ingresa el nombre del patrocinador:")
         if ok and nombre_sponsor:
             _, mensaje = db.agregar_sponsor(nombre_sponsor, logo_path, self.id_evento_seleccionado)
@@ -239,10 +219,9 @@ class EventoTabWidget(QWidget):
         if not item_seleccionado:
             QMessageBox.warning(self, "Sin Selección", "Selecciona un patrocinador de la lista para quitarlo.")
             return
-        
         sponsor_id = item_seleccionado.data(Qt.UserRole)
         confirm = QMessageBox.question(self, "Confirmar", f"¿Seguro que quieres quitar al patrocinador '{item_seleccionado.text()}'?")
-        if confirm == QMessageBox.Yes:
+        if confirm == QMessageBox.StandardButton.Yes:
             exito, mensaje = db.eliminar_sponsor(sponsor_id)
             if exito:
                 QMessageBox.information(self, "Éxito", mensaje)
